@@ -61,6 +61,10 @@
                 .then(data => {
                     fetchedData = data;
 
+                    // Option pour montrer tous les groupes
+                    selectPicker.append(`<option value="${-1}">Aucun</option>`);
+                    selectPicker.append(`<option value="${0}">Tous</option>`);
+
                     let iGroup = 1;
                     // Boucler à travers les données pour ajouter chaque point au selectpicker
                     Object.values(data).forEach(group => {
@@ -80,6 +84,37 @@
             selectPicker.on('change', function () {
                 if (fetchedData) {
                     var selectedValue = $(this).val();
+
+                    // when removing all groups
+                    if (selectedValue == -1) {
+                        for (var i in fetchedData) {
+                            deleteGroup(i);
+                        }
+                        return
+                    }
+
+                    // when selecting all groups
+                    if (selectedValue == 0) {
+                        for (var i in fetchedData) {
+                            deleteGroup(i); // remove all groups from the list under the map
+                            var selectedGroup = fetchedData[i];
+                            selectedGroup.forEach(point => {
+                                let latitude = point.Lat;
+                                let longitude = point.Long;
+                                var marker = L.marker([latitude, longitude]).addTo(map);
+                                marker.bindPopup(
+                                    'Adresse: ' + point.Adresse +
+                                    '<br>Nombre de porte: ' + point.Nombre +
+                                    '<br>Nombre de voix: ' + parseFloat(point['Voix estim\u00e9es']).toFixed(1) +
+                                    '<br>Groupe numéro: '+ point['Cluster']
+                                );
+                                marker.options.id = `marker-${i}`;
+                            })
+                        }
+                        return
+                    }
+
+                    // adding only one group
                     var selectedGroup = fetchedData[selectedValue];
 
                     // Nombre de portes total pour le cluster
@@ -92,6 +127,11 @@
                     // Arrondi les voix a 1 chiffre apres la virgule
                     var voixParBinome = parseFloat(selectedGroup[0]["Voix estimées du cluster par binome"]).toFixed(1)
 
+                    // Score LFI du bureau de vote
+                    var voixLFI = parseInt(selectedGroup[0]['Voix LFI du bureau']);
+                    var nbElecteurs = parseInt(selectedGroup[0]["Nombre d'électeurs du bureau"]);
+                    var scoreLFI = (100 * voixLFI / nbElecteurs).toFixed(1);
+
                     // 'Adresse: ' + point.Adresse +
                     //         '<br>Nombre de porte: ' + point.Nombre +
                     //         '<br>Nombre de voix: ' + point['Voix estim\u00e9es']
@@ -102,6 +142,7 @@
                         text += `Groupe ${selectedValue} : ${selectedGroup[0].Adresse} : </br>`;
                         text += ` nombre binomes : ${selectedGroup[0]["Nb Binomes"]} : </br>`;
                         text += ` nombre portes : ${nbPortes} : </br>`;
+                        text += ` % électeurs du bureau: ${scoreLFI}% : </br>`;
                         text += ` voix estimées par binome: ${voixParBinome} : </br>`;
                         text += `<button class='btn btn-danger' onclick="deleteGroup(${selectedValue})">X</button>`;
                         text += `</div>`;
